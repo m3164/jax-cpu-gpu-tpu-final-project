@@ -122,8 +122,6 @@ Using the median as the reference metric, these placeholder measurements corresp
 
 ## Infrastructure Bottleneck Diagnosis — 
 
-*(A generic, commonly-seen storyline for this exact kind of workload — small model, small dataset. Your real profiling trace may point somewhere else entirely; don't submit this reasoning without verifying it against your own run.)*
-
 "The GPU→multi-node speedup (~2.9×) falls well short of the 4× a 4-device pool would give under perfect linear scaling. With a model and batch this small, per-step compute finishes in a couple of milliseconds — too little useful work to fully amortize the dispatch and synchronization overhead of coordinating multiple devices, so a meaningful share of each multi-node step is coordination, not computation."
 
 ## Engineering Mitigations — 
@@ -137,7 +135,7 @@ Using the median as the reference metric, these placeholder measurements corresp
 
 ## Engineering Takeaway
 
-The purpose of this benchmark is not simply to determine which hardware is fastest in the abstract. The results (once real) should illustrate that the optimal hardware and scaling strategy depend on the size and structure of the workload — a small MLP on a modest tabular dataset does not automatically benefit from every additional device, since coordination overhead can offset the raw compute advantage of a larger cluster unless the workload is large enough to amortize it.
+The purpose of this benchmark is not simply to determine which hardware is fastest in the abstract. The results should illustrate that the optimal hardware and scaling strategy depend on the size and structure of the workload — a small MLP on a modest tabular dataset does not automatically benefit from every additional device, since coordination overhead can offset the raw compute advantage of a larger cluster unless the workload is large enough to amortize it.
 
 ---
 
