@@ -12,7 +12,7 @@
 
 This repository contains the containerized training pipeline, orchestration manifests, and benchmarking material for the ME344 capstone project.
 
-The project — **[Your Project Title, e.g. "Scaling a Churn Prediction MLP Across CPU, GPU, and Multi-Node Infrastructure"]** — covers containerization, cluster orchestration, hardware-accelerated training, and performance benchmarking of a deep learning classifier across three distinct compute configurations.
+The project — "Scaling a Churn Prediction MLP Across CPU, GPU, and Multi-Node Infrastructure"— covers containerization, cluster orchestration, hardware-accelerated training, and performance benchmarking of a deep learning classifier across three distinct compute configurations.
 
 The repository contains:
 
