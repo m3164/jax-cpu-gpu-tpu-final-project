@@ -1,4 +1,3 @@
-# jax-cpu-gpu-tpu-final-project
 # Churn Prediction: CPU vs GPU vs TPU/Multi-Node Scaling Benchmark
 
 **Stanford University — Summer Session 2026**
@@ -12,7 +11,7 @@
 
 This repository contains the containerized training pipeline, orchestration manifests, and benchmarking material for the ME344 capstone project.
 
-The project — "Scaling a Churn Prediction MLP Across CPU, GPU, and Multi-Node Infrastructure"— covers containerization, cluster orchestration, hardware-accelerated training, and performance benchmarking of a deep learning classifier across three distinct compute configurations.
+The project evaluates a Multi-Layer Perceptron (MLP) churn classifier's training performance across three compute configurations — CPU, single GPU, and multi-node/TPU — under equivalent experimental conditions.
 
 The repository contains:
 
@@ -22,10 +21,6 @@ The repository contains:
 - benchmark results exported as JSON files for each hardware configuration;
 - an aggregation notebook comparing CPU, GPU, and multi-node/TPU performance;
 - the final presentation slides used for submission.
-
-The main benchmarking component evaluates the **same MLP training workload** on three different hardware configurations — CPU, single GPU, and multi-node/TPU — under equivalent experimental conditions.
-
-The objective is to provide a reproducible comparison of training performance while identifying the primary infrastructure bottleneck and the engineering mitigations that address it.
 
 ---
 
@@ -38,14 +33,14 @@ churn-mlp-scaling-benchmark/
 │   └── Dockerfile
 │
 ├── manifests/
-│   ├── job_cpu.yaml            # or job_cpu.sbatch
-│   ├── job_gpu.yaml            # or job_gpu.sbatch
-│   └── job_multinode.yaml      # or job_tpu.sbatch
+│   ├── job_cpu.yaml
+│   ├── job_gpu.yaml
+│   └── job_multinode.yaml
 │
 ├── training/
-│   ├── train.py                # single training script, hardware-agnostic
-│   ├── model.py                # MLP definition
-│   └── data_pipeline.py        # loading/preprocessing for Churn_Dataset.csv
+│   ├── train.py
+│   ├── model.py
+│   └── data_pipeline.py
 │
 ├── benchmarks/
 │   ├── CPU_Benchmark.ipynb
@@ -75,120 +70,74 @@ churn-mlp-scaling-benchmark/
 
 ## Prerequisites
 
-The training pipeline is designed to run inside the Docker container built from `docker/Dockerfile`, so no manual dependency installation is required on any compute node.
-
-Before running any benchmark:
+The training pipeline runs inside the Docker container built from `docker/Dockerfile`, so no manual dependency installation is required on any compute node.
 
 1. Clone this repository.
 2. Build the image: `docker build -t churn-mlp -f docker/Dockerfile .`
-3. Confirm `dataset/Churn_Dataset.csv` is present (already included in the repo).
+3. Confirm `dataset/Churn_Dataset.csv` is present.
 
 ---
 
 ## Execution Workflow
 
-Each hardware configuration runs the **same** `train.py` script, `model.py`, and `data_pipeline.py` — only the launch command and orchestration manifest change. This keeps the comparison fair: same code, same data, same preprocessing, same hyperparameters.
+Each hardware configuration runs the same `train.py`, `model.py`, and `data_pipeline.py` — only the launch command and orchestration manifest change, keeping the comparison fair.
 
-### Step 1 — CPU Benchmark
-
-```
-docker run churn-mlp python training/train.py --device cpu
-```
-
-Or via manifest: `manifests/job_cpu.yaml` (Kubernetes) / `job_cpu.sbatch` (SLURM).
-
-Generates `cpu_metrics.json` inside `results/`.
-
-### Step 2 — GPU Benchmark
-
-```
-docker run --gpus all churn-mlp python training/train.py --device gpu
-```
-
-Or via manifest: `manifests/job_gpu.yaml` / `job_gpu.sbatch`.
-
-Generates `gpu_metrics.json` inside `results/`.
-
-### Step 3 — Multi-Node / TPU Benchmark
-
-Launched via `manifests/job_multinode.yaml` (GKE) or `job_tpu.sbatch` (HPCC), specifying the number of nodes/accelerators.
-
-Generates `multinode_metrics.json` inside `results/`.
-
-### Step 4 — Aggregate Results
-
-Open `aggregation/Aggregation_Benchmarks.ipynb`. It:
-
-- loads the three benchmark JSON files from `results/`;
-- compares CPU, GPU, and multi-node/TPU performance;
-- computes hardware speedups;
-- produces the performance summary used in the README and slides.
+**Step 1 — CPU:** `docker run churn-mlp python training/train.py --device cpu` → generates `cpu_metrics.json`
+**Step 2 — GPU:** `docker run --gpus all churn-mlp python training/train.py --device gpu` → generates `gpu_metrics.json`
+**Step 3 — Multi-Node/TPU:** launched via `manifests/job_multinode.yaml` → generates `multinode_metrics.json`
+**Step 4 — Aggregate:** `aggregation/Aggregation_Benchmarks.ipynb` loads all three JSON files and computes speedups.
 
 ---
 
 ## Benchmark Methodology
 
-The benchmark measures steady-state training performance rather than one-time startup or compilation overhead.
+*(EXAMPLE VALUES — replace with your actual run configuration)*
 
-- **[N] warm-up steps** performed before timing begins, to remove framework/JIT initialization overhead.
-- **[N] measured training steps** collected per hardware configuration.
-- Explicit synchronization before recording each timestamp (no measuring async dispatch as if it were compute time).
+- **10 warm-up steps** performed before timing begins, to remove framework/JIT initialization overhead.
+- **100 measured training steps** collected per hardware configuration.
+- Explicit synchronization before recording each timestamp.
 - Metrics captured per step: step time, throughput (samples/sec), hardware utilization %, peak memory usage.
 
-Each configuration reports:
-
-- Median step time
-- Mean step time
-- Minimum step time
-- Standard deviation
-- Peak memory / utilization
-
-**Median is used as the primary comparison metric** (not mean), because shared cloud/cluster environments can produce occasional slow outlier steps from resource contention or scheduling — the median better reflects typical steady-state performance. Mean and standard deviation are still reported for a complete picture.
+**Median is used as the primary comparison metric** rather than mean, since shared cloud/cluster environments occasionally produce slow outlier steps from resource contention or scheduling — median better reflects typical steady-state performance. Mean and standard deviation are still reported for a complete picture.
 
 ---
 
-## Results
+## Results -
 
-*(Fill in once your benchmark notebooks have run — this table drives your Slide 4.)*
+*(This shape — a fast CPU→GPU jump and a smaller, sub-linear GPU→multi-node jump — is a common, plausible pattern for a small MLP on a small tabular dataset like this one. Your actual numbers could easily look different. Replace every cell below.)*
 
 | Hardware | Median Step Time | Throughput (samples/sec) | Utilization |
 |---|---|---|---|
-| CPU | [ ] ms | [ ] | — |
-| GPU | [ ] ms | [ ] | [ ]% |
-| Multi-Node/TPU | [ ] ms | [ ] | [ ]% |
+| CPU | 41.6 ms | ~1,540 | — |
+| GPU | 3.2 ms | ~20,000 | ~62% |
+| Multi-Node/TPU (4×) | 1.1 ms | ~58,000 | ~41% per device |
 
-Using the median as the reference metric, these measurements correspond to approximately:
+Using the median as the reference metric, these placeholder measurements correspond to approximately:
 
-- **[N]× speedup** from CPU → GPU
-- **[N]× speedup** from CPU → Multi-Node/TPU
-- **[N]× speedup** from GPU → Multi-Node/TPU
-
-These results apply specifically to this MLP workload and dataset size and should not be interpreted as universal hardware performance ratios.
+- **~13× speedup** from CPU → GPU
+- **~38× speedup** from CPU → Multi-Node/TPU
+- **~2.9× speedup** from GPU → Multi-Node/TPU (well below the 4× a 4-device pool would give under perfect linear scaling)
 
 ---
 
-## Infrastructure Bottleneck Diagnosis
+## Infrastructure Bottleneck Diagnosis — 
 
-*(This becomes your README "bottleneck" section and Slide 5.)*
+*(A generic, commonly-seen storyline for this exact kind of workload — small model, small dataset. Your real profiling trace may point somewhere else entirely; don't submit this reasoning without verifying it against your own run.)*
 
-[State plainly, once you have data — e.g.: "At this dataset size, the model is too small to fully saturate the accelerators; step time is dominated by kernel-launch/dispatch overhead rather than raw compute, which is why speedup from GPU → multi-node is sub-linear."]
+"The GPU→multi-node speedup (~2.9×) falls well short of the 4× a 4-device pool would give under perfect linear scaling. With a model and batch this small, per-step compute finishes in a couple of milliseconds — too little useful work to fully amortize the dispatch and synchronization overhead of coordinating multiple devices, so a meaningful share of each multi-node step is coordination, not computation."
 
-## Engineering Mitigations
+## Engineering Mitigations — 
 
-- [e.g., increase batch size to better amortize per-step overhead]
-- [e.g., mixed precision (bf16/fp16) to reduce memory pressure and increase throughput]
-- [e.g., cache preprocessed data in memory instead of re-reading each epoch]
-- [e.g., favor a single strong GPU over multi-node distribution for workloads this small]
+- Increase batch size to give each device more work per synchronization point.
+- Use mixed precision (bf16/fp16) to reduce memory pressure and increase throughput.
+- Cache preprocessed data in memory instead of re-reading/re-transforming each epoch.
+- For a workload this small, a single strong GPU may be the more cost-effective choice over multi-node distribution.
 
 ---
 
 ## Engineering Takeaway
 
-The purpose of this benchmark is not simply to determine which hardware is fastest in the abstract.
-
-The results illustrate a broader systems engineering principle: **the optimal hardware and scaling strategy depend on the size and structure of the workload.** A small MLP on a modest tabular dataset does not automatically benefit from every additional device — coordination and dispatch overhead can offset the raw compute advantage of larger clusters unless the workload is large enough, or the implementation is structured carefully enough, to amortize that overhead.
-
-Device availability is not the same as effective device utilization — performance should be evaluated in terms of how well the software maps the workload onto the hardware, not just which hardware is present.
+The purpose of this benchmark is not simply to determine which hardware is fastest in the abstract. The results (once real) should illustrate that the optimal hardware and scaling strategy depend on the size and structure of the workload — a small MLP on a modest tabular dataset does not automatically benefit from every additional device, since coordination overhead can offset the raw compute advantage of a larger cluster unless the workload is large enough to amortize it.
 
 ---
 
@@ -196,8 +145,8 @@ Device availability is not the same as effective device utilization — performa
 
 1. Clone this repository.
 2. Build the Docker image (`docker/Dockerfile`).
-3. Run each benchmark notebook/manifest for CPU, GPU, and multi-node/TPU (Steps 1–3 above).
+3. Run each benchmark notebook/manifest for CPU, GPU, and multi-node/TPU.
 4. Confirm all three JSON files exist in `results/`.
 5. Run `aggregation/Aggregation_Benchmarks.ipynb` to produce the final comparison.
 
-Because cloud hardware allocation, runtime configuration, and system load can vary between sessions, reproduced timing measurements may differ from the values reported here.
+Because cloud hardware allocation, runtime configuration, and system load can vary between sessions, your measured timings will differ from the illustrative values above — that's expected and fine, since those values aren't real to begin with.
