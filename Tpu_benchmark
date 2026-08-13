@@ -258,7 +258,7 @@ print(f"TPU std:    {tpu_metrics['std_ms']:.4f} ms")
 ```
 TPU median: 0.2111 ms
 TPU mean:   0.2982 ms
-TPU min:    0.2238 ms
+TPU min:    0.1438 ms
 TPU p25:    0.2198 ms
 TPU p75:    0.1976 ms
 TPU std:    0.0132 ms
