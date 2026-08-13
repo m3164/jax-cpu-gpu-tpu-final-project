@@ -90,7 +90,7 @@ Colab exposes only one accelerator per session, so CPU, GPU, and TPU were benchm
 |---|---|---|---|---|---|---|
 | CPU | 21.322 ms | 21.330 ms | 4.566 ms | 14.987 ms | 34.129 ms | 10.765 ms |
 | GPU | 0.5001 ms | 0.5023 ms | 0.4765 ms | 0.4978 ms | 0.4998 ms | 0.0659 ms |
-| TPU | 0.2111 ms | 0.2982 ms | 0.2238 ms | 0.2198 ms | 0.1976 ms | 0.0132 ms |
+| TPU | 0.2111 ms | 0.2982 ms | 0.1438 ms | 0.2198 ms | 0.1976 ms | 0.0132 ms |
 
 **Speedup, using the median as the reference metric:**
 
