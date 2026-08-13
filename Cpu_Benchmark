@@ -182,10 +182,81 @@ print("\n=== Cluster Performance Delta Report ===")
 for device_type, execution_speed in benchmark_metrics.items():
     print(f"Hardware Layer: {device_type.upper():<4} | Kernel Compute Latency: {execution_speed}")
 ```
+### Exercise 11 (extended): Statistical Benchmark Function
 
-**Prompt:** Document and analyze the performance numbers captured above. Explain what architectural features or hardware bottlenecks (memory transfers, low-precision advantages, small matrix sizes) account for the changes in speed across CPU, GPU, and TPU execution targets.
+```python
+def benchmark_backend(
+    X_train,
+    X_test,
+    backend,
+    warmup_runs=10,
+    measured_runs=100
+):
+    X_tr_jax, X_te_jax = allocate_workload_to_hardware(
+        X_train,
+        X_test,
+        backend_target=backend
+    )
 
-**Answer:**
-> The model had an accuracy of 86%, meaning it did a good job of classifying the test samples. The CPU completed the kernel in 7 ms, while the GPU and TPU were unavailable due to hardware clusters that were busy or unconfigured. Usually, GPUs and TPUs outperform CPUs by handling a more complex neural network. In this experiment, the CPU had a strong and reliable answer and had a strong accuracy.
+    # Multiple warm-ups: compilation, initialization and cache stabilization
+    for _ in range(warmup_runs):
+        compute_cluster_pairwise_distances(
+            X_tr_jax,
+            X_te_jax
+        ).block_until_ready()
 
+    timings_ms = []
+
+    for _ in range(measured_runs):
+        start = time.perf_counter_ns()
+
+        compute_cluster_pairwise_distances(
+            X_tr_jax,
+            X_te_jax
+        ).block_until_ready()
+
+        end = time.perf_counter_ns()
+        timings_ms.append((end - start) / 1_000_000)
+
+    timings_ms = np.asarray(timings_ms)
+
+    return {
+        "median_ms": float(np.median(timings_ms)),
+        "mean_ms": float(np.mean(timings_ms)),
+        "min_ms": float(np.min(timings_ms)),
+        "p25_ms": float(np.percentile(timings_ms, 25)),
+        "p75_ms": float(np.percentile(timings_ms, 75)),
+        "std_ms": float(np.std(timings_ms)),
+        "all_timings_ms": timings_ms.tolist()
+    }
+```
+
+### Running the CPU Benchmark
+
+```python
+cpu_metrics = benchmark_backend(
+    X_train,
+    X_test,
+    backend="cpu",
+    warmup_runs=10,
+    measured_runs=100
+)
+
+print(f"CPU median: {cpu_metrics['median_ms']:.4f} ms")
+print(f"CPU mean:   {cpu_metrics['mean_ms']:.4f} ms")
+print(f"CPU min:    {cpu_metrics['min_ms']:.4f} ms")
+print(f"CPU p25:    {cpu_metrics['p25_ms']:.4f} ms")
+print(f"CPU p75:    {cpu_metrics['p75_ms']:.4f} ms")
+print(f"CPU std:    {cpu_metrics['std_ms']:.4f} ms")
+```
+
+**Output:**
+```
+CPU median: 21.322 ms
+CPU mean:   21.33 ms
+CPU min:    4.566 ms
+CPU p25:    14.987 ms
+CPU p75:    34.129 ms
+CPU std:    10.765 ms
+```
 ---
