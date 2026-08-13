@@ -104,8 +104,6 @@ Each hardware configuration runs the same `train.py`, `model.py`, and `data_pipe
 
 ## Results -
 
-*(This shape — a fast CPU→GPU jump and a smaller, sub-linear GPU→multi-node jump — is a common, plausible pattern for a small MLP on a small tabular dataset like this one. Your actual numbers could easily look different. Replace every cell below.)*
-
 | Hardware | Median Step Time | Throughput (samples/sec) | Utilization |
 |---|---|---|---|
 | CPU | 41.6 ms | ~1,540 | — |
