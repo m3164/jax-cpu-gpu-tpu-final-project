@@ -1,0 +1,193 @@
+# Full-Stack Supervised Learning, Infrastructure Profiling & Case Study
+
+**Assignment 4** — bridging low-level hardware orchestration and high-level ML strategy.
+
+- **Part 1:** Build an optimized, loop-free K-Nearest Neighbor pipeline using JAX to analyze telecom customer churn, dispatched across CPU/GPU/TPU pools for benchmarking.
+- **Part 2:** Business case study — ML systems strategy recommendations for a vacation rental company.
+
+---
+
+## Part 1: Hands-On Infrastructure & Core Coding
+
+### Setup
+
+```python
+import time
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import jax
+import jax.numpy as jnp
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score
+%matplotlib inline
+
+print("=== Cluster Topology Diagnostics ===")
+print(f"All visible hardware devices: {jax.devices()}")
+for backend in ['cpu', 'gpu', 'tpu']:
+    try:
+        devices = jax.devices(backend)
+        print(f"  Backend '{backend}': {len(devices)} active execution pool slice(s)")
+    except RuntimeError:
+        print(f"  Backend '{backend}': 0 (Unconfigured / offline on this partition node)")
+```
+
+### Exercise 1
+> Load the CSV file named `Churn.csv` into a Pandas DataFrame assigned to a variable called `df`. Display the first 10 rows.
+
+```python
+import pandas as pd
+
+df = pd.read_csv('/content/sample_data/Churn_Dataset.csv')
+print(df.head(10))
+```
+
+### Exercise 2
+> Which specific column indicates whether a user has churned? How many total users are present in your dataset?
+
+```python
+print("Churn column name:", 'Churned')
+print("Total users:", df.shape[0])
+```
+
+### Exercise 3
+> Use `df.describe()` to explore the data distribution. Why are the row counts inconsistent across variables?
+
+```python
+print(df.describe())
+# The command only counts non-null values. If a column has missing data,
+# its count will be lower than the full row total.
+```
+
+### Exercise 4
+> Impute and fill all missing vector fields with the median value of their respective columns. Verify a clean 5,000-row count across all dimensions.
+
+```python
+df = df.fillna(df.median(numeric_only=True))
+print(df.count)
+```
+
+### Exercise 5
+> Separate input data into structural features (`X`) and classification labels (`y`).
+
+```python
+x = df.drop('churned', axis=1)
+y = df['churned']
+```
+
+### Exercise 6
+> Split the dataset into a 70% training / 30% testing configuration.
+
+```python
+from sklearn.model_selection import train_test_split
+
+X_train, X_test, y_train, y_test = train_test_split(x, y, test_size=0.3, random_state=42)
+```
+
+### Exercise 7: JAX Hardware Target Allocation
+> Use `jax.device_put()` to manually allocate NumPy datasets into memory arrays on a designated cluster backend (`'cpu'`, `'gpu'`, or `'tpu'`).
+
+```python
+def allocate_workload_to_hardware(X_train_np, X_test_np, backend_target='cpu'):
+    """
+    Explicitly captures a target cluster device handle and assigns arrays
+    to memory storage.
+    """
+    # 1. Fetch the target device primitive from the active backend
+    device = jax.devices(backend_target)[0]
+
+    # 2. Push inputs to device memory
+    X_train_jax = jax.device_put(X_train_np, device=device)
+    X_test_jax = jax.device_put(X_test_np, device=device)
+
+    return X_train_jax, X_test_jax
+```
+
+### Exercise 8: Vectorized XLA Distance Kernel
+> Write a purely vectorized, loop-free calculation of pairwise Euclidean distances using `jnp`, decorated with `@jax.jit`.
+
+```python
+@jax.jit
+def compute_cluster_pairwise_distances(X_train_jax, X_test_jax):
+    """
+    Computes Euclidean distances between test samples and train samples.
+    Returns array of shape (n_test_samples, n_train_samples).
+    """
+    # (A - B)^2 = A^2 - 2AB + B^2
+    test_sq = jnp.sum(X_test_jax ** 2, axis=1, keepdims=True)
+    train_sq = jnp.sum(X_train_jax ** 2, axis=1)
+    distances = jnp.sqrt(
+        test_sq - 2 * jnp.dot(X_test_jax, X_train_jax.T) + train_sq
+    )
+    return distances
+```
+
+### Exercise 9: Nearest Neighbors Prediction Pipeline
+> Extract the closest 5 neighbor indices, map them to `y_train`, and compute the majority class to yield `y_pred`.
+
+```python
+def predict_labels_knn(distance_matrix, y_train, k=5):
+    y_train_jnp = jnp.asarray(y_train)  # Convert y_train to JAX array for indexing
+    nearest_idx = jnp.argsort(distance_matrix, axis=1)[:, :k]
+    neighbor_labels = y_train_jnp[nearest_idx].astype(int)
+
+    y_pred = jnp.array([
+        jnp.argmax(jnp.bincount(labels_row, minlength=2))
+        for labels_row in neighbor_labels
+    ])
+    return y_pred
+```
+
+### Exercise 10: Model Evaluation
+> Run the prediction pipeline on the test set and compute accuracy.
+
+```python
+X_train_jax, X_test_jax = allocate_workload_to_hardware(
+    X_train.to_numpy(), X_test.to_numpy(), backend_target='cpu'
+)
+distance_matrix = compute_cluster_pairwise_distances(X_train_jax, X_test_jax)
+y_pred = predict_labels_knn(distance_matrix, y_train, k=5)
+accuracy = accuracy_score(y_test, np.array(y_pred))
+print("Accuracy:", accuracy)
+```
+
+### Exercise 11: Cluster Profiling & Performance Delta Log
+> Cycle the compiled kernel across CPU, GPU, and TPU nodes and log execution latency.
+
+```python
+cluster_backends = ['cpu', 'gpu', 'tpu']
+benchmark_metrics = {}
+
+for backend in cluster_backends:
+    try:
+        X_tr_jax, X_te_jax = allocate_workload_to_hardware(
+            X_train.to_numpy(), X_test.to_numpy(), backend_target=backend
+        )
+
+        # Warm-up cycle to decouple XLA compile overhead from throughput timing
+        _ = compute_cluster_pairwise_distances(X_tr_jax, X_te_jax).block_until_ready()
+
+        # Timed execution
+        start_mark = time.perf_counter()
+        distances = compute_cluster_pairwise_distances(X_tr_jax, X_te_jax).block_until_ready()
+        end_mark = time.perf_counter()
+
+        elapsed_time_ms = (end_mark - start_mark) * 1000
+        benchmark_metrics[backend] = f"{elapsed_time_ms:.4f} ms"
+
+    except (RuntimeError, ValueError) as e:
+        benchmark_metrics[backend] = "Target hardware cluster pool unconfigured or busy"
+
+print("\n=== Cluster Performance Delta Report ===")
+for device_type, execution_speed in benchmark_metrics.items():
+    print(f"Hardware Layer: {device_type.upper():<4} | Kernel Compute Latency: {execution_speed}")
+```
+
+**Prompt:** Document and analyze the performance numbers captured above. Explain what architectural features or hardware bottlenecks (memory transfers, low-precision advantages, small matrix sizes) account for the changes in speed across CPU, GPU, and TPU execution targets.
+
+**Answer:**
+> The model had an accuracy of 86%, meaning it did a good job of classifying the test samples. The CPU completed the kernel in 7 ms, while the GPU and TPU were unavailable due to hardware clusters that were busy or unconfigured. Usually, GPUs and TPUs outperform CPUs by handling a more complex neural network. In this experiment, the CPU had a strong and reliable answer and had a strong accuracy.
+
+---
+
+> For this situation, I would recommend **Model A**. While Model B has the lowest error at 1%, its 6-hour prediction time is not practical in any scenario — booking requests need fast responses, and a 6-hour-per-prediction latency is unusable at business speed regardless of accuracy. Model C trains almost instantly, but 10% error is too imprecise for a pricing system meant to correct the company's current problem. Model A is the best balance: fast prediction time, a reasonable training time, and 5% error, which could be further improved with more data. I'd present this model to the CEO, emphasizing that it's the only candidate that meets the operational speed requirements for the business while still aiming for strong accuracy.
