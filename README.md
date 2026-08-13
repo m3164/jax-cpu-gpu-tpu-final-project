@@ -1,7 +1,7 @@
 # Churn Prediction: CPU vs GPU vs TPU/Multi-Node Scaling Benchmark
 
 **Stanford University — Summer Session 2026**
-**Course:** ME344 — Enterprise AI Systems Architecture & Infrastructure Scaling
+**Course** : Introduction to High Performance Computing
 **Student:** Michael Toms
 
 
