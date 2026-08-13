@@ -1,0 +1,17 @@
+
+
+---
+
+**Methodology**
+
+Before running the benchmark, I first attempted to follow the course workflow by deploying my training job on the Stanford HPCC/GKE cluster. *[If this actually happened to you: describe what you tried — e.g., "I was able to access the cluster and submit Kubernetes jobs, but [describe what actually happened — GPU/TPU pods stuck pending, quota limits, scheduling errors, whatever the real obstacle was]." If you didn't attempt the cluster, skip this paragraph — don't borrow someone else's cluster story.]*
+To complete the assignment, I benchmarked the churn MLP using the hardware accelerators available in Google Colab. Since Colab exposes only one accelerator per session, I ran the CPU, GPU, and TPU benchmarks in three independent sessions. To keep the comparison fair, I used the same dataset, preprocessing pipeline, model implementation, and benchmarking procedure for every run. Each device performed **2** warm-up iterations to eliminate JIT/compilation and cache-initialization overhead, followed by **5** measured training steps with explicit synchronization before each timestamp.
+
+**Results**
+
+| Hardware | Median Step Time | Mean | Min | Std Dev |
+|---|---|---|---|---|
+| CPU | **[from your cpu_metrics.json]** | | | |
+| GPU | **[from your gpu_metrics.json]** | | | |
+| TPU | **[from your tpu_metrics.json]** | | | |
+
