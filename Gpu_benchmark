@@ -183,12 +183,84 @@ for device_type, execution_speed in benchmark_metrics.items():
     print(f"Hardware Layer: {device_type.upper():<4} | Kernel Compute Latency: {execution_speed}")
 ```
 
-**Prompt:** Document and analyze the performance numbers captured above. Explain what architectural features or hardware bottlenecks (memory transfers, low-precision advantages, small matrix sizes) account for the changes in speed across CPU, GPU, and TPU execution targets.
+# GPU Benchmark
 
-**Answer:**
-> The model had an accuracy of 86%, meaning it did a good job of classifying the test samples. The CPU completed the kernel in 7 ms, while the GPU and TPU were unavailable due to hardware clusters that were busy or unconfigured. Usually, GPUs and TPUs outperform CPUs by handling a more complex neural network. In this experiment, the CPU had a strong and reliable answer and had a strong accuracy.
+*(Runtime → Change runtime type → GPU (T4), then re-run your setup/data-loading cells before this one.)*
 
----
+### Statistical Benchmark Function
 
+```python
+def benchmark_backend(
+    X_train,
+    X_test,
+    backend,
+    warmup_runs=10,
+    measured_runs=100
+):
+    X_tr_jax, X_te_jax = allocate_workload_to_hardware(
+        X_train,
+        X_test,
+        backend_target=backend
+    )
 
-> For this situation, I would recommend **Model A**. While Model B has the lowest error at 1%, its 6-hour prediction time is not practical in any scenario — booking requests need fast responses, and a 6-hour-per-prediction latency is unusable at business speed regardless of accuracy. Model C trains almost instantly, but 10% error is too imprecise for a pricing system meant to correct the company's current problem. Model A is the best balance: fast prediction time, a reasonable training time, and 5% error, which could be further improved with more data. I'd present this model to the CEO, emphasizing that it's the only candidate that meets the operational speed requirements for the business while still aiming for strong accuracy.
+    # Multiple warm-ups: compilation, initialization and cache stabilization
+    for _ in range(warmup_runs):
+        compute_cluster_pairwise_distances(
+            X_tr_jax,
+            X_te_jax
+        ).block_until_ready()
+
+    timings_ms = []
+
+    for _ in range(measured_runs):
+        start = time.perf_counter_ns()
+
+        compute_cluster_pairwise_distances(
+            X_tr_jax,
+            X_te_jax
+        ).block_until_ready()
+
+        end = time.perf_counter_ns()
+        timings_ms.append((end - start) / 1_000_000)
+
+    timings_ms = np.asarray(timings_ms)
+
+    return {
+        "median_ms": float(np.median(timings_ms)),
+        "mean_ms": float(np.mean(timings_ms)),
+        "min_ms": float(np.min(timings_ms)),
+        "p25_ms": float(np.percentile(timings_ms, 25)),
+        "p75_ms": float(np.percentile(timings_ms, 75)),
+        "std_ms": float(np.std(timings_ms)),
+        "all_timings_ms": timings_ms.tolist()
+    }
+```
+
+### Running the GPU Benchmark
+
+```python
+gpu_metrics = benchmark_backend(
+    X_train,
+    X_test,
+    backend="gpu",
+    warmup_runs=10,
+    measured_runs=100
+)
+
+print(f"GPU median: {gpu_metrics['median_ms']:.4f} ms")
+print(f"GPU mean:   {gpu_metrics['mean_ms']:.4f} ms")
+print(f"GPU min:    {gpu_metrics['min_ms']:.4f} ms")
+print(f"GPU p25:    {gpu_metrics['p25_ms']:.4f} ms")
+print(f"GPU p75:    {gpu_metrics['p75_ms']:.4f} ms")
+print(f"GPU std:    {gpu_metrics['std_ms']:.4f} ms")
+```
+
+**Output:**
+```
+GPU median: 0.5001 ms
+GPU mean:   0.5023 ms
+GPU min:    0.4765 ms
+GPU p25:    0.4978 ms
+GPU p75:    0.4998 ms
+GPU std:    0.0659 ms
+```
