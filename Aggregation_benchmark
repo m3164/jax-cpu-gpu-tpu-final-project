@@ -15,3 +15,10 @@ To complete the assignment, I benchmarked the churn MLP using the hardware accel
 | GPU |3.2ms |0.543ms | 0.454ms|0.0810ms |
 | TPU |1.1ms |0.211ms |0.1389ms |0.0116ms |
 
+These results correspond to approximately a 13× speedup from CPU to GPU and about a 38× speedup from CPU to TPU. The TPU is also roughly 2.9× faster than the GPU for this workload.
+
+The CPU performs the worst because calculating pairwise distances involves many independent mathematical operations that can be processed in parallel, but a CPU has a relatively limited number of general-purpose cores. In contrast, GPUs can handle these calculations much more efficiently by spreading the workload across thousands of parallel processing units. The TPU produces the lowest latency because XLA converts the computation into optimized tensor operations that take advantage of the TPU’s specialized hardware for matrix processing.
+
+Device setup and host-to-device memory transfers were deliberately left out of the measured time. This ensures that the results focus specifically on the execution speed of the computation rather than the total time required for the entire application. As a result, the benchmark provides a more direct comparison of the computational performance of each device.
+
+The most important takeaway from this experiment is not simply that the TPU is the fastest. Instead, it demonstrates an important Computer Science concept: no single type of hardware is always the best choice. The ideal accelerator depends on factors such as the workload, type of computation, dataset size, and required performance. For this particular pairwise-distance task, the TPU delivers the best performance, but other types of workloads could perform better on a GPU or CPU depending on their specific requirements.
