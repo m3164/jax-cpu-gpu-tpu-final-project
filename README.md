@@ -59,7 +59,7 @@ churn-mlp-scaling-benchmark/
 │   └── multinode_metrics.json
 │
 ├── presentation/
-│   └── ME344_Capstone_[YourName].pdf
+│   └── ME344_Capstone_m3164.pdf
 │
 ├── requirements.txt
 ├── .gitignore
@@ -91,9 +91,9 @@ Each hardware configuration runs the same `train.py`, `model.py`, and `data_pipe
 
 ## Benchmark Methodology
 
-*(EXAMPLE VALUES — replace with your actual run configuration)*
 
-- **10 warm-up steps** performed before timing begins, to remove framework/JIT initialization overhead.
+
+- **3 warm-up steps** performed before timing begins, to remove framework/JIT initialization overhead.
 - **100 measured training steps** collected per hardware configuration.
 - Explicit synchronization before recording each timestamp.
 - Metrics captured per step: step time, throughput (samples/sec), hardware utilization %, peak memory usage.
