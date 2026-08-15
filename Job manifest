@@ -1,0 +1,51 @@
+# job_cpu.yaml — CPU-only training run
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: churn-mlp-cpu
+spec:
+  template:
+    spec:
+      containers:
+        - name: churn-mlp
+          image: churn-mlp:latest
+          command: ["python", "train.py"]
+          env:
+            - name: DEVICE_TARGET
+              value: "cpu"
+          resources:
+            requests:
+              cpu: "4"
+              memory: "8Gi"
+            limits:
+              cpu: "4"
+              memory: "8Gi"
+      restartPolicy: Never
+  backoffLimit: 2
+---
+# job_gpu.yaml — Single-GPU training run
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: churn-mlp-gpu
+spec:
+  template:
+    spec:
+      containers:
+        - name: churn-mlp
+          image: churn-mlp:latest
+          command: ["python", "train.py"]
+          env:
+            - name: DEVICE_TARGET
+              value: "gpu"
+          resources:
+            requests:
+              cpu: "4"
+              memory: "16Gi"
+              nvidia.com/gpu: "1"
+            limits:
+              cpu: "4"
+              memory: "16Gi"
+              nvidia.com/gpu: "1"
+      restartPolicy: Never
+  backoffLimit: 2
